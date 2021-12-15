@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="source\_include\ngx_func.h" />
+    <ClInclude Include="source\_include\ngx_c_conf.h" />
+    <ClInclude Include="source\_include\ngx_global.h" />
+    <ClInclude Include="source\_include\ngx_macro.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\app\ngx_c_conf.cpp" />
+    <ClCompile Include="source\app\nginx.cpp" />
+    <ClCompile Include="source\app\ngx_string.cpp" />
+    <ClCompile Include="source\app\ngx_log.cpp" />
+    <ClCompile Include="source\app\ngx_print.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="source\ngx_conf.conf" />
+  </ItemGroup>
+</Project>
