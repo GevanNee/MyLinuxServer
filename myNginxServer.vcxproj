@@ -35,7 +35,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="source\_include\ngx_comm.h" />
     <ClInclude Include="source\_include\ngx_c_conf.h" />
+    <ClInclude Include="source\_include\ngx_c_lockmutex.h" />
+    <ClInclude Include="source\_include\ngx_c_memory.h" />
+    <ClInclude Include="source\_include\ngx_c_socket.h" />
+    <ClInclude Include="source\_include\ngx_c_threadpool.h" />
     <ClInclude Include="source\_include\ngx_func.h" />
     <ClInclude Include="source\_include\ngx_global.h" />
     <ClInclude Include="source\_include\ngx_macro.h" />
@@ -45,7 +50,19 @@
     <ClCompile Include="source\app\ngx_c_conf.cpp" />
     <ClCompile Include="source\app\ngx_log.cpp" />
     <ClCompile Include="source\app\ngx_print.cpp" />
+    <ClCompile Include="source\app\ngx_setproctitle.cpp" />
     <ClCompile Include="source\app\ngx_string.cpp" />
+    <ClCompile Include="source\misc\ngx_c_memory.cpp" />
+    <ClCompile Include="source\misc\ngx_c_threadpool.cpp" />
+    <ClCompile Include="source\net\ngx_c_socket.cpp" />
+    <ClCompile Include="source\net\ngx_c_socket_accept.cpp" />
+    <ClCompile Include="source\net\ngx_c_socket_conn.cpp" />
+    <ClCompile Include="source\net\ngx_c_socket_inet.cpp" />
+    <ClCompile Include="source\net\ngx_c_socket_request.cpp" />
+    <ClCompile Include="source\proc\ngx_daemon.cpp" />
+    <ClCompile Include="source\proc\ngx_event.cpp" />
+    <ClCompile Include="source\proc\ngx_process_cycle.cpp" />
+    <ClCompile Include="source\signal\ngx_signal.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source\ngx_conf.conf" />
