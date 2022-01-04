@@ -13,13 +13,13 @@ u_char* ngx_slprintf(u_char* buf, u_char* last, const char* fmt, ...)
 	va_list   args; 
 	u_char* p;
 
-	va_start(args, fmt); //Ê¹argsÖ¸ÏòÆğÊ¼µÄ²ÎÊı
+	va_start(args, fmt); //ä½¿argsæŒ‡å‘èµ·å§‹çš„å‚æ•°
 	p = ngx_vslprintf(buf, last, fmt, args);
-	va_end(args);        //ÊÍ·Åargs   
+	va_end(args);        //é‡Šæ”¾args   
 	return p;
 }
 
-u_char* ngx_snprintf(u_char* buf, size_t max, const char* fmt, ...)   //Ààprintf()¸ñÊ½»¯º¯Êı£¬±È½Ï°²È«£¬maxÖ¸Ã÷ÁË»º³åÇø½áÊøÎ»ÖÃ
+u_char* ngx_snprintf(u_char* buf, size_t max, const char* fmt, ...) 
 {
 	u_char* p;
 	va_list   args;
@@ -32,36 +32,32 @@ u_char* ngx_snprintf(u_char* buf, size_t max, const char* fmt, ...)   //Ààprintf
 
 u_char* ngx_vslprintf(u_char* buf, u_char* last, const char* fmt, va_list args)
 {
-	/*debug*/
-	u_char* debug_buf = buf;
-	/*debug end*/
-
-	/*¸Ã×Ö·ûÓÃÀ´Ìî³äÇ°ÃæµÄ×Ö·û£¬±ÈÈçfmtÀïÓöµ½%10d£¬
-	±íÊ¾Êä³ö10¸öÊ®½øÖÆÊı×Ö£¬µ«ÊÇºóÃæµÄ²ÎÊıÖ»ÓĞ7¸öÊı×Ö1234567£¬
-	ÄÇÃ´Ç°ÃæÈı¸ö¾ÍÓÃzero×Ö·ûÌî³ä£¬zero×Ö·ûÒ»°ãÊÇ'0'»òÕß' '*/
+	/*è¯¥å­—ç¬¦ç”¨æ¥å¡«å……å‰é¢çš„å­—ç¬¦ï¼Œæ¯”å¦‚fmté‡Œé‡åˆ°%10dï¼Œ
+	è¡¨ç¤ºè¾“å‡º10ä¸ªåè¿›åˆ¶æ•°å­—ï¼Œä½†æ˜¯åé¢çš„å‚æ•°åªæœ‰7ä¸ªæ•°å­—1234567ï¼Œ
+	é‚£ä¹ˆå‰é¢ä¸‰ä¸ªå°±ç”¨zeroå­—ç¬¦å¡«å……ï¼Œzeroå­—ç¬¦ä¸€èˆ¬æ˜¯'0'æˆ–è€…' '*/
 	u_char zero; 
 
 	uintptr_t width, sign, hex, frac_width, scale;
 
-	int64_t		i64;   //±£´æ%d¶ÔÓ¦µÄ¿É±ä²Î
-	uint64_t	ui64;  //±£´æ%ud¶ÔÓ¦µÄ¿É±ä²Î£¬ÁÙÊ±×÷Îª%f¿É±ä²ÎµÄÕûÊı²¿·ÖÒ²ÊÇ¿ÉÒÔµÄ
-	u_char*		str;    //±£´æ%s¶ÔÓ¦µÄ¿É±ä²Î
-	double		df;     //±£´æ%f¶ÔÓ¦µÄ¿É±ä²Î
-	uint64_t	frac;  //%f¿É±ä²ÎÊı,¸ù¾İ%.2fµÈ£¬È¡µÃĞ¡Êı²¿·ÖµÄ2Î»ºóµÄÄÚÈİ£»
+	int64_t		i64;   //ä¿å­˜%då¯¹åº”çš„å¯å˜å‚
+	uint64_t	ui64;  //ä¿å­˜%udå¯¹åº”çš„å¯å˜å‚ï¼Œä¸´æ—¶ä½œä¸º%få¯å˜å‚çš„æ•´æ•°éƒ¨åˆ†ä¹Ÿæ˜¯å¯ä»¥çš„
+	u_char*		str;    //ä¿å­˜%så¯¹åº”çš„å¯å˜å‚
+	double		df;     //ä¿å­˜%få¯¹åº”çš„å¯å˜å‚
+	uint64_t	frac;  //%få¯å˜å‚æ•°,æ ¹æ®%.2fç­‰ï¼Œå–å¾—å°æ•°éƒ¨åˆ†çš„2ä½åçš„å†…å®¹ï¼›
 
 	while (*fmt != '\0' && buf < last)
 	{
 		if (*fmt == '%')
 		{
-			/*³õÊ¼»¯ÁÙÊ±±äÁ¿*/
+			/*åˆå§‹åŒ–ä¸´æ—¶å˜é‡*/
 			zero = (u_char)(*++fmt == '0' ? '0' : ' ');
 			width = 0;
 			sign = 1;
 			hex = 0;
 			frac_width = 0;
 
-			/*Ò»£¬½âÎö%ºóÃæ×Ö·ûµÄº¬Òå*/
-			/*Ò».1) */
+			/*ä¸€ï¼Œè§£æ%åé¢å­—ç¬¦çš„å«ä¹‰*/
+			/*ä¸€.1) */
 			while (*fmt >= '0' && *fmt <= '9')
 			{
 				width = width * 10 + (*fmt - '0');
@@ -98,13 +94,13 @@ u_char* ngx_vslprintf(u_char* buf, u_char* last, const char* fmt, va_list args)
 				break;
 			}
 
-			/*¶ş£¬¸ù¾İº¬ÒåºÍ²ÎÊıargs£¬Éú³É¶ÔÓ¦×Ö·û´®£¬²¢ÇÒ±£´æ×Ö·û´®µÄ¸ñÊ½*/
+			/*äºŒï¼Œæ ¹æ®å«ä¹‰å’Œå‚æ•°argsï¼Œç”Ÿæˆå¯¹åº”å­—ç¬¦ä¸²ï¼Œå¹¶ä¸”ä¿å­˜å­—ç¬¦ä¸²çš„æ ¼å¼*/
 			switch (*fmt)
 			{
 			case '%':
 				*buf++ = '%';
 				fmt++;
-				continue; /*Ìø×ªµ½×îÍâ²ãwhileÑ­»·*/
+				continue; /*è·³è½¬åˆ°æœ€å¤–å±‚whileå¾ªç¯*/
 
 			case 'd':
 				if (sign)
@@ -144,7 +140,7 @@ u_char* ngx_vslprintf(u_char* buf, u_char* last, const char* fmt, va_list args)
 				sign = 0;
 				hex = 2;
 				zero = '0';
-				width = 2 * sizeof(void*); /*%pÖ»ÄÜ°´ÕÕÕâ¸ö³¤¶ÈÊä³ö*/
+				width = 2 * sizeof(void*); /*%påªèƒ½æŒ‰ç…§è¿™ä¸ªé•¿åº¦è¾“å‡º*/
 				break;
 
 			case 'f':
@@ -164,7 +160,7 @@ u_char* ngx_vslprintf(u_char* buf, u_char* last, const char* fmt, va_list args)
 					uintptr_t uint_max = (intptr_t(0) - 1);
 					for (uintptr_t i = frac_width; i > 0; --i)
 					{
-						if (scale < uint_max / 10) /*·ÀÖ¹Òç³ö*/
+						if (scale < uint_max / 10) /*é˜²æ­¢æº¢å‡º*/
 						{
 							scale *= 10;
 						}
@@ -212,7 +208,7 @@ u_char* ngx_vslprintf(u_char* buf, u_char* last, const char* fmt, va_list args)
 				continue;
 			}
 
-			/*Èı£¬°ÑÉú³ÉµÄ×Ö·û´®°´ÕÕµÃµ½µÄ¸ñÊ½ÊäÈëµ½bufÖĞ*/
+			/*ä¸‰ï¼ŒæŠŠç”Ÿæˆçš„å­—ç¬¦ä¸²æŒ‰ç…§å¾—åˆ°çš„æ ¼å¼è¾“å…¥åˆ°bufä¸­*/
 			if (sign != 0)
 			{
 				if (i64 < 0)
@@ -235,14 +231,12 @@ u_char* ngx_vslprintf(u_char* buf, u_char* last, const char* fmt, va_list args)
 	}
 	return buf;
 }
-
+/*printf("%9d", -12345)*/
 u_char* ngx_sprintf_num(u_char* buf, u_char* last, uint64_t ui64, u_char zero, uintptr_t hexadecimal, uintptr_t width)
 {
 	u_char* p;
 	u_char temp[NGX_INT64_LEN + 1];
-	/*debug*/
-	size_t tempSize = sizeof(temp) / sizeof(u_char);
-	/*debug end*/
+
 	static u_char hex[] = "0123456789abcdef";
 	static u_char HEX[] = "0123456789ABCDEF";
 
@@ -250,7 +244,7 @@ u_char* ngx_sprintf_num(u_char* buf, u_char* last, uint64_t ui64, u_char zero, u
 
 	if (hexadecimal == 0)
 	{
-		/*ÕâÀï¿ÉÒÔ×öÒ»¸öÓÅ»¯£¬ÒòÎªÒ»°ãui64´«½øÀ´µÄÊı²»³¬¹ı32Î»*/
+		/*è¿™é‡Œå¯ä»¥åšä¸€ä¸ªä¼˜åŒ–(è¿˜æ²¡åš)ï¼Œå› ä¸ºä¸€èˆ¬ui64ä¼ è¿›æ¥çš„æ•°ä¸è¶…è¿‡32ä½*/
 		do 
 		{
 			*--p = (u_char)(ui64 % 10 + '0');

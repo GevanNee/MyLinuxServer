@@ -13,6 +13,12 @@
 #include "ngx_c_conf.h"
 #include "ngx_macro.h"
 
+
+/*
+æ‰“å°å­—ç¬¦ä¸²æœ‰å¾ˆå¤šæ–¹å¼ï¼šä¸€ä¸ªå­—ç¬¦ä¸²æ‰“å°åˆ°å­—ç¬¦æ•°ç»„é‡Œï¼Œè¿˜å¯èƒ½å­—ç¬¦æ•°ç»„çš„æ‹·è´ã€‚
+è¿˜æœ‰å‚æ•°ä¸åŒï¼Œæœ‰äº›æ˜¯va_listï¼Œæœ‰äº›æ˜¯ç”¨ä¸‰ä¸ªç‚¹(...)ä½œä¸ºå‚æ•°
+*/
+
 static u_char error_levels[][20]
 {
 	{"stderr"},
@@ -48,25 +54,25 @@ void ngx_log_init()
 	ngx_log.fd = open((const char*)log_name, O_WRONLY | O_APPEND | O_CREAT, 0644);
 	if (ngx_log.fd == -1)
 	{
-		ngx_log_stderr(errno, "");
+		ngx_log_stderr(errno, "logåˆå§‹åŒ–å¤±è´¥ï¼Œfd = -1");
 		ngx_log.fd = STDERR_FILENO;
 	}
 }
 
-/*°ÑerrnoµÄĞÅÏ¢±£´æµ½Ò»¶ÎÖ¸¶¨µÄÄÚ´æÀï¡£*/
-/*·µ»ØÖµ£ºÈÕÖ¾×Ö·û´®µÄÄ©Î²*/
+/*æŠŠerrnoçš„ä¿¡æ¯ä¿å­˜åˆ°ä¸€æ®µæŒ‡å®šçš„å†…å­˜é‡Œã€‚*/
+/*è¿”å›å€¼ï¼šæ—¥å¿—å­—ç¬¦ä¸²çš„æœ«å°¾*/
 u_char* ngx_log_errno(u_char* buf, u_char* last, int err)
 {
-	/*×ó×Ö·û´®*/
+	/*å·¦å­—ç¬¦ä¸²*/
 	char leftString[10]{ 0 };
 	sprintf(leftString, "(%d: ", err);
 	size_t leftLenth = strlen(leftString);
 
-	/*Ö÷ĞÅÏ¢*/
+	/*ä¸»ä¿¡æ¯*/
 	char* errorInfo = strerror(err);
 	size_t infoLenth = strlen(errorInfo);
 	
-	/*ÓÒ×Ö·û´®*/
+	/*å³å­—ç¬¦ä¸²*/
 	char rightString[] = " ) ";
 	size_t rightLenth = strlen(rightString);
 
@@ -80,29 +86,27 @@ u_char* ngx_log_errno(u_char* buf, u_char* last, int err)
 	return buf;
 }
 
-
-
-/*°ÑÈÕÖ¾´òÓ¡µ½stderrÀï£¬·Ç³£ÖØÒªµÄĞÅÏ¢²ÅĞèÒªµ÷ÓÃÕâ¸öº¯Êı*/
+/*æŠŠæ—¥å¿—æ‰“å°åˆ°stderré‡Œï¼Œéå¸¸é‡è¦çš„ä¿¡æ¯æ‰éœ€è¦è°ƒç”¨è¿™ä¸ªå‡½æ•°*/
 /* */
 void ngx_log_stderr(int err, const char * fmt, ...)
 {
 	va_list args;
-	u_char errorString[NGX_MAX_ERROR_STR + 1]{0}; /*+1¿ÉÄÜ¸ü±£ÏÕÒ»µã*/
-	u_char* p;
+
+	u_char errorString[NGX_MAX_ERROR_STR + 1]; /*+1å¯èƒ½æ›´ä¿é™©ä¸€ç‚¹*/
+	memset(errorString, 0, sizeof(errorString));
+
+	u_char* p = (u_char*)memcpy(errorString, "nginx: ", 7) + 7;
 	u_char* last = errorString + NGX_MAX_ERROR_STR;
 
-	p = (u_char*)memcpy(errorString, "nginx: ", 7) + 7;
-	
 	va_start(args, fmt);
 	p = ngx_vslprintf(p, last, fmt, args);
 	va_end(args);
 	
-
 	if (err != 0)
 	{
 		p = ngx_log_errno(p, last, err);
 	}
-	/*Î»ÖÃ²»¹»Ò²ÒªÇ¿ĞĞ²åÈë»»ĞĞ·û*/
+
 	if (p >= (last - 1))
 	{
 		p = last - 2;
@@ -110,29 +114,28 @@ void ngx_log_stderr(int err, const char * fmt, ...)
 	*p++ = '\n';
 
 	write(STDERR_FILENO, errorString, p - errorString);
-
+	
 	if (ngx_log.fd > STDERR_FILENO)
 	{
-		/*ÍùÈÕÖ¾ÎÄ¼şÀïÍ¬²½ĞÅÏ¢*/
+		/*å¾€æ—¥å¿—æ–‡ä»¶é‡ŒåŒæ­¥ä¿¡æ¯*/
 	}
 
 	return;
 }
 
-
-
-
 void ngx_log_core(int level, int err, const char* fmt, ...)
 {
 	va_list args;
-	u_char* p;
-	u_char* last;
+	
 	u_char errstr[NGX_MAX_ERROR_STR + 1];
 
 	memset(errstr, 0, sizeof(errstr));
+	u_char*			 p;
+	u_char*			 last;
+
 	last = errstr + NGX_MAX_ERROR_STR;
 
-	/*Ê±¼ä²Ù×÷*/
+	/*æ—¶é—´æ“ä½œ*/
 	struct timeval   timeValue;
 	struct tm		 tm;
 	time_t			 second;
@@ -140,21 +143,64 @@ void ngx_log_core(int level, int err, const char* fmt, ...)
 	memset(&timeValue, 0, sizeof(struct timeval));
 	memset(&tm, 0, sizeof(struct tm));
 
-	gettimeofday(&timeValue, nullptr);
+	gettimeofday(&timeValue, nullptr); /*1900.1.1*/
 
 	second = timeValue.tv_sec;
-	localtime_r(&second, &tm); /*´ø_rµÄÊÇÏß³Ì°²È«£¬µ«ÊÇÓĞĞÔÄÜÎÊÌâ£¬»¹ÓĞËÀËøÎÊÌâ*/
-	/*½â¾ö·½·¨£º https://blog.csdn.net/pengzhouzhou/article/details/87095635 */
+	localtime_r(&second, &tm); /*å¸¦_rçš„æ˜¯çº¿ç¨‹å®‰å…¨ï¼Œä½†æ˜¯æœ‰æ€§èƒ½é—®é¢˜ï¼Œè¿˜æœ‰æ­»é”é—®é¢˜*/
+	/*ä¼˜åŒ–æ–¹æ³•ï¼š https://blog.csdn.net/pengzhouzhou/article/details/87095635 */
 	tm.tm_year += 1900;
 	tm.tm_mon++;
 
-	/*×éºÏ³öÒ»¸öÊ±¼ä×Ö·û´®£¬±ÈÈç£º2021/11/08 05:30:00*/
+	/*ç»„åˆå‡ºä¸€ä¸ªæ—¶é—´å­—ç¬¦ä¸²ï¼Œæ¯”å¦‚ï¼š2021/11/08 05:30:00*/
 	u_char currentTimestr[40] = {0};
 	ngx_slprintf(currentTimestr, currentTimestr + 40, "%4d/%02d/%02d %02d:%02d:%02d", 
 				tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-	p = (u_char*)memcpy(errstr, currentTimestr, strlen((const char*)currentTimestr)) + strlen((const char*)currentTimestr);
-
 	
-		//localtime_r()
-	//write(ngx_log.fd, buf, size);
+	p = (u_char*)memcpy(errstr, currentTimestr, strlen((const char*)currentTimestr)) + strlen((const char*)currentTimestr);
+	p = ngx_slprintf(p, last, " [%s] ", error_levels[level]);                //æ—¥å¿—çº§åˆ«å¢åŠ è¿›æ¥ï¼Œå¾—åˆ°å½¢å¦‚ï¼š  2019/01/08 20:26:07 [crit] 
+	p = ngx_slprintf(p, last, "%P: ", ngx_pid);                             //æ”¯æŒ%Pæ ¼å¼ï¼Œè¿›ç¨‹idå¢åŠ è¿›æ¥ï¼Œå¾—åˆ°å½¢å¦‚ï¼š   2019/01/08 20:50:15 [crit] 2037:
+
+	va_start(args, fmt);
+	p = ngx_vslprintf(p, last, fmt, args);
+	va_end(args);
+
+	if (err > 0)
+	{
+		p = ngx_log_errno(p, last, err);
+	}
+
+	if (p >= last - 1)
+	{
+		p = last - 1 - 1;
+	}
+	*p++ = '\n';
+
+	ssize_t n;
+	do
+	{
+		if (level > ngx_log.log_level)
+		{
+			break;
+		}
+
+		n = write(ngx_log.fd, errstr, p - errstr);
+		if (n == -1)
+		{
+			if (errno == ENOSPC) //å†™å¤±è´¥ï¼Œä¸”åŸå› æ˜¯ç£ç›˜æ²¡ç©ºé—´äº†
+			{
+				n = write(STDERR_FILENO, "disk was full\n", 15);
+				n = write(STDERR_FILENO, errstr, p - errstr);
+			}
+			else
+			{
+				//å…¶ä»–é”™è¯¯ã€‚
+				if (ngx_log.fd != STDERR_FILENO)
+				{
+					n = write(STDERR_FILENO, "write log file error\n", 21);
+					n = write(STDERR_FILENO, errstr, p - errstr);
+				}
+			}
+		}
+
+	} while (0);
 }

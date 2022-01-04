@@ -1,7 +1,7 @@
 #include <string.h>
 #include "ngx_func.h"
 
-//Ïû³ý×Ö·û´®Ê×Î²µÄ¿Õ¸ñ
+//æ¶ˆé™¤å­—ç¬¦ä¸²é¦–å°¾çš„ç©ºæ ¼
 void trim(char* string)
 {
     Rtrim(string);
@@ -14,6 +14,7 @@ void Rtrim(char* string)
     {
         return;
     }
+
     size_t lenth = strlen(string);
     if (lenth <= 0)
     {

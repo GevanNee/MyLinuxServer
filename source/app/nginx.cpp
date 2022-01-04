@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <cstring>
 #include <vector>
 #include <time.h>
@@ -12,8 +12,120 @@
 #include "ngx_c_conf.h"
 #include "ngx_func.h"
 #include "ngx_global.h"
+#include "ngx_macro.h"
 
 using namespace std;
+
+void freeResource();
+
+/*设置标题有关的全局变量*/
+int				g_og_argc; /*main函数的参数个数*/
+char**			g_os_argv; /**/
+char*			gp_envmem; /*新的环境变量地址*/
+size_t			g_envneedmem;
+size_t			g_argvneedmem;
+
+pid_t			ngx_pid;
+pid_t			ngx_parent;
+int				ngx_process;
+sig_atomic_t	ngx_reap; //是否回收过子进程
+CSocket			g_socket;
+
+
+int main(int argc, char* const * argv, char** env)
+{
+	int   exitcode = 0;
+
+	ngx_log.fd = -1;
+	ngx_pid = getpid();
+	ngx_parent = getppid();
+	ngx_process = NGX_PROCESS_MASTER;
+	ngx_reap = 0;
+
+	g_argvneedmem = 0;
+	for (int i = 0; i < argc; i++)
+	{
+		g_argvneedmem += strlen(argv[i]) + 1;
+	}
+	
+	g_envneedmem = 0;
+	for (int i = 0; environ[i]; ++i)
+	{
+		g_envneedmem += strlen(environ[i]) + 1;
+	}
+	
+	g_og_argc = argc;
+	g_os_argv = (char**)argv;
+
+	ngx_init_signals();
+	ngx_init_setproctitle();
+
+	ngx_c_conf* p_config = ngx_c_conf::getInstance();
+	if (p_config == nullptr)
+	{
+		ngx_log_stderr(0, "config init fail!!!!");
+	}
+
+	if (p_config->load("./ngx_conf.conf") == false)
+	{
+		ngx_log_stderr(0, "config load fail!!!!");
+	}
+
+	ngx_log_init();
+	ngx_log_core(NGX_LOG_DEBUG, 0, "\nLog初始化成功");
+
+	if (p_config->getInt("Daemon", 0) == 1)
+	{
+		int ret = ngx_daemon();
+		if (ret == -1)
+		{
+			ngx_log_stderr(errno, "失败了");
+			return -1;
+		}
+		if (ret == 1)
+		{
+			ngx_log_stderr(errno, "初始进程退出了");
+			freeResource();
+			exitcode = 0;
+			return exitcode;
+		}
+	}
+
+	if (g_socket.Initialize() == false)//初始化socket
+	{
+		ngx_log_stderr(errno, "main()中g_socket.Initialize() == false");
+		exitcode = 1;
+		goto lblexit;
+	}
+	/******开始业务*******/
+
+	ngx_master_process_cycle();
+	
+	
+	/*
+	if (fork() == 0)
+	{
+		//int n = 1; 
+		//kill(getpid(), SIGKILL);
+		int n = 1;
+		while (n)
+		{
+			ngx_log_stderr(0, "子进程循环中...");
+			sleep(1);
+		}
+	}
+	int n = 1;
+	while (n)
+	{
+		ngx_log_stderr(0, "主进程循环中...");
+		sleep(1);
+	}
+	*/
+
+lblexit:
+	freeResource();
+	return exitcode;
+}
 
 void freeResource()
 {
@@ -22,69 +134,4 @@ void freeResource()
 		close(ngx_log.fd);
 		ngx_log.fd = -1;
 	}
-	
-}
-
-void timeTest()
-{
-	u_char* last;
-	u_char  errstr[20 + 1];   //这个+1也是我放入进来的，本函数可以参考ngx_log_stderr()函数的写法；
-
-	memset(errstr, 0, sizeof(errstr));
-	last = errstr + 20;
-
-	struct timeval   tv;
-	struct tm        tm;
-	time_t           sec;   //秒
-	u_char* p;    //指向当前要拷贝数据到其中的内存位置
-	va_list          args;
-
-	memset(&tv, 0, sizeof(struct timeval));
-	memset(&tm, 0, sizeof(struct tm));
-
-	//gettimeofday(&tv, NULL);     //获取当前时间，返回自1970-01-01 00:00:00到现在经历的秒数【第二个参数是时区，一般不关心】        
-	tv.tv_sec + 1;
-	sec = tv.tv_sec;             //秒
-	localtime_r(&sec, &tm);      //把参数1的time_t转换为本地时间，保存到参数2中去，带_r的是线程安全的版本，尽量使用
-	tm.tm_mon++;                 //月份要调整下正常
-	tm.tm_year += 1900;          //年份要调整下才正常
-
-	printf("%d-%d-%d", tm.tm_year, tm.tm_mon, tm.tm_mday);
-}
-
-void configTest()
-{
-	char str[500] = "    12   ";
-
-	trim(str);
-
-	ngx_c_conf* conf = ngx_c_conf::getInstance();
-	if (conf == nullptr)
-	{
-		cout << "初始化失败" << endl;
-	}
-
-	if (!conf->load("./ngx_conf.conf"))
-	{
-		cout << "加载文件失败" << endl;
-	}
-	cout << conf->getInt("listenport", 12322) << endl;
-}
-
-void logTest()
-{
-	ngx_log_init();
-	u_char myName[10]{ "LDY" };
-	ngx_log_stderr(errno, "myName = %s, myAge = %d", myName, 25);
-}
-
-
-int main()
-{
-	timeTest();
-	
-	//logTest();
-	//getpid();
-	//freeResource();
-	return 0; 
 }

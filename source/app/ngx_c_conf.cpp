@@ -12,6 +12,7 @@ ngx_c_conf* ngx_c_conf::getInstance()
 {
     if (m_instance == nullptr)
     {
+        /*é”*/
         if (m_instance == nullptr)
         {
             m_instance = new ngx_c_conf();
@@ -65,10 +66,10 @@ bool ngx_c_conf::load(const char* configFileName)
             continue;
         }
 
-        //Çå³ý×Ö·û´®Ä©Î²µÄÌØÊâ·ûºÅ
+        //æ¸…é™¤å­—ç¬¦ä¸²æœ«å°¾çš„ç‰¹æ®Šç¬¦å·
         while (strlen(linebuf) > 0)
         {
-            if (linebuf[strlen(linebuf) - 1] == '\t' || linebuf[strlen(linebuf) - 1] == '\n' || linebuf[strlen(linebuf) - 1] == ' ')
+            if (linebuf[strlen(linebuf) - 1] == '\r' || linebuf[strlen(linebuf) - 1] == '\t' || linebuf[strlen(linebuf) - 1] == '\n' || linebuf[strlen(linebuf) - 1] == ' ')
             {
                 linebuf[strlen(linebuf) - 1] = '\0';
             }
@@ -77,6 +78,7 @@ bool ngx_c_conf::load(const char* configFileName)
                 break;
             }
         }
+
         if (strlen(linebuf) == 0)
         {
             continue;
@@ -109,14 +111,16 @@ bool ngx_c_conf::load(const char* configFileName)
 
 int ngx_c_conf::getInt(const char* key, const int defaultValue)
 {
+    int value = defaultValue;
     for (auto itr : m_ConfigItemList)
     {
         if (strcasecmp((*itr).key, key) == 0)
         {
-            return atoi((*itr).value);
+            value = atoi((*itr).value);
+            break;
         }
     }
-    return defaultValue;
+    return value;
 }
 
 const char* ngx_c_conf::getString(const char* key)
@@ -137,7 +141,7 @@ ngx_c_conf::releaser::~releaser()
         if (m_instance != nullptr)
         {
             delete m_instance;
-            m_instance == nullptr;
+            m_instance = nullptr;
         }
     }
 }
