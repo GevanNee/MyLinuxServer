@@ -147,7 +147,7 @@ static void ngx_process_get_status()
 	{
 		pid = waitpid(-1, &status, WNOHANG);
 		
-		if (pid == 0)
+		if (pid == 0) //存在子进程但是没有子进程结束
 		{
 			ngx_log_core(NGX_LOG_INFO, 0, "没有子进程需要回收，返回");
 			return;
@@ -161,7 +161,7 @@ static void ngx_process_get_status()
 				continue;
 			}
 
-			if (err == ECHILD && one)
+			if (err == ECHILD && one) //不存在子进程了
 			{
 				ngx_log_core(NGX_LOG_INFO, err, "waitpid() failed!");
 				return;

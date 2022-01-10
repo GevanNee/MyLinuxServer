@@ -60,11 +60,12 @@ bool CThreadPool::Create(int threadNum)
 		}
 		else
 		{
-			//创建线程成功，可以考虑打个日志
+			//可以考虑打个日志，
 		}
 	}
-
+	ngx_log_core(NGX_LOG_INFO, 0, "CThreadPool::Create()创建线程成功, 总数为%d", threadNum);
 	//创建线程后，必须保证线程运行正常，也就是全部卡在pthread_cond_wait()这一行,那么Create函数才能返回，否则等待。
+
 	std::vector<ThreadItem*>::iterator iter;
 lblfor:
 	for (iter = m_threadVector.begin(); iter != m_threadVector.end(); iter++)
@@ -77,6 +78,85 @@ lblfor:
 		}
 	}
 	return true;
+}
+
+void CThreadPool::StopAll()
+{
+	if (m_shutdown == true)
+	{
+		return;
+	}
+	m_shutdown = true;
+
+	int err = pthread_cond_broadcast(&m_pthreadCond);
+	if (err != 0)
+	{
+		ngx_log_core(NGX_LOG_CRITICAL, err, "CThreadPool::StopAll()中pthread_cond_broadcast()失败，返回的错误码为%d!", err);
+		return;
+	}
+
+	std::vector< ThreadItem*>::iterator iter;
+	for (iter = m_threadVector.begin(); iter != m_threadVector.begin(); ++iter)
+	{
+		pthread_join((*iter)->_Handle, nullptr);
+	}
+
+	pthread_mutex_destroy(&m_pthreadMutex);
+	pthread_cond_destroy(&m_pthreadCond);
+
+	for (iter = m_threadVector.begin(); iter != m_threadVector.begin(); ++iter)
+	{
+		if (*iter != nullptr)
+		{
+			delete (*iter);
+		}
+	}
+	m_threadVector.clear();
+
+	ngx_log_core(NGX_LOG_INFO, 0, "CThreadPool::StopAll()成功返回，线程池中线程全部正常结束!");
+	return;
+}
+
+/*消息队列入队*/
+void CThreadPool::inMsgRecvQueueAndSignan(char* buf)
+{
+	int err = pthread_mutex_lock(&m_pthreadMutex);
+	if (err != 0)
+	{
+		ngx_log_core(NGX_LOG_ERROR, err, "inMsgRecvQueueAndSignan()中，pthread_mutex_lock出错");
+	}
+	m_MsgRecvQueue.push_back(buf);
+	++m_iRecvMsgQueueCount;
+
+	err = pthread_mutex_unlock(&m_pthreadMutex);
+	if (err != 0)
+	{
+		ngx_log_core(NGX_LOG_ERROR, err, "inMsgRecvQueueAndSignan()中，pthread_mutex_lock出错");
+	}
+
+	Call();
+	return;
+}
+
+void CThreadPool::Call()
+{
+	int err = pthread_cond_signal(&m_pthreadCond);
+	if (err != 0)
+	{
+		ngx_log_core(NGX_LOG_ERROR, err, "inMsgRecvQueueAndSignan()中，pthread_mutex_lock出错");
+	}
+
+	if (m_iThreadNum == m_iRunningThreadNum) /*如果忙线程数量达到上限*/
+	{
+		time_t currtime = time(nullptr); /*返回单位：秒*/
+		if (currtime - m_iLastEmgTime > 10) //最少间隔10秒钟才报一次线程池中线程不够用的问题；
+		{
+			//两次报告之间的间隔必须超过10秒，不然如果一直出现当前工作线程全忙，但频繁报告日志也够烦的
+			m_iLastEmgTime = currtime;  //更新时间
+			//写日志，通知这种紧急情况给用户，用户要考虑增加线程池中线程数量了
+			ngx_log_core(NGX_LOG_EMERGENCY, 0, "CThreadPool::Call()中发现线程池中当前空闲线程数量为0，要考虑扩容线程池了!");
+		}
+	}
 }
 
 /*这是静态成员函数*/
@@ -99,13 +179,13 @@ void* CThreadPool::ThreadFunc(void* threadData)
 
 		/*循环，防止虚假唤醒*/
 		/*这里size的复杂度是O(N)*/
-		while ((pThreadPoolObj->m_MsgRecvQueue.size() == 0) && m_shutdown != false)
+		while ((pThreadPoolObj->m_MsgRecvQueue.size() == 0) && m_shutdown == false)
 		{
 			if (pThread->ifrunning == false)
 			{
 				pThread->ifrunning = true;
 			}
-
+			ngx_log_core(NGX_LOG_DEBUG, 0, "ThreadFunc中线程启动成功, 线程id为:%ud",tid);
 			pthread_cond_wait(&m_pthreadCond, &m_pthreadMutex);
 		}
 

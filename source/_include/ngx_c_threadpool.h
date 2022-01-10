@@ -28,9 +28,9 @@ private:
 	//定义一个 线程池中的 线程 的结构，以后可能做一些统计之类的 功能扩展，所以引入这么个结构来 代表线程 感觉更方便一些；
 	struct ThreadItem
 	{
-		pthread_t _Handle;		//线程句柄
-		CThreadPool* _pThis;	//记录线程池的指针
-		bool        ifrunning;	//标记是否正式启动起来
+		pthread_t		_Handle;		//线程句柄
+		CThreadPool*	_pThis;			//记录线程池的指针
+		bool			ifrunning;		//标记是否正式启动起来
 
 		ThreadItem(CThreadPool* p_this) :_pThis(p_this), ifrunning(false) {}
 		~ThreadItem(){}

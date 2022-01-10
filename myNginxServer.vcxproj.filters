@@ -10,6 +10,9 @@
     <ClInclude Include="source\_include\ngx_c_socket.h" />
     <ClInclude Include="source\_include\ngx_c_threadpool.h" />
     <ClInclude Include="source\_include\ngx_comm.h" />
+    <ClInclude Include="source\_include\ngx_c_slogic.h" />
+    <ClInclude Include="source\_include\ngx_logic_comm.h" />
+    <ClInclude Include="source\_include\ngx_c_crc32.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\app\ngx_c_conf.cpp" />
@@ -29,6 +32,9 @@
     <ClCompile Include="source\proc\ngx_process_cycle.cpp" />
     <ClCompile Include="source\signal\ngx_signal.cpp" />
     <ClCompile Include="source\app\ngx_setproctitle.cpp" />
+    <ClCompile Include="source\logic\ngx_c_slogic.cpp" />
+    <ClCompile Include="source\net\ngx_c_socket_time.cpp" />
+    <ClCompile Include="source\misc\ngx_c_crc32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source\ngx_conf.conf" />

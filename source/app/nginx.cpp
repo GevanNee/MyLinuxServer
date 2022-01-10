@@ -13,6 +13,7 @@
 #include "ngx_func.h"
 #include "ngx_global.h"
 #include "ngx_macro.h"
+#include "ngx_c_slogic.h"
 
 using namespace std;
 
@@ -27,9 +28,12 @@ size_t			g_argvneedmem;
 
 pid_t			ngx_pid;
 pid_t			ngx_parent;
-int				ngx_process;
+int				ngx_process; //进程类型，master，worker还是别的
 sig_atomic_t	ngx_reap; //是否回收过子进程
-CSocket			g_socket;
+int				g_stopEvent; //进程退出标志
+
+CLogicSocket			g_socket;
+CThreadPool				g_threadpool;
 
 
 int main(int argc, char* const * argv, char** env)
@@ -97,6 +101,8 @@ int main(int argc, char* const * argv, char** env)
 		exitcode = 1;
 		goto lblexit;
 	}
+
+
 	/******开始业务*******/
 
 	ngx_master_process_cycle();

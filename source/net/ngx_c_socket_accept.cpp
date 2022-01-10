@@ -98,16 +98,12 @@ void CSocket::ngx_event_accept(lpngx_connection_t oldc)
 		}
 		else
 		{
-			/*测试*/
-			/*打印缓冲区的大小*/
-			int readBufLen;
-			int writeBufLen;
-			socklen_t intSize = sizeof(int);
-			getsockopt(accept_fd, SOL_SOCKET, SO_RCVBUF, &readBufLen, &intSize);
-			
-			getsockopt(accept_fd, SOL_SOCKET, SO_SNDBUF, &writeBufLen, &intSize);
-			
-			ngx_log_core(NGX_LOG_DEBUG, 0, "发送缓冲区大小是%d, 接收缓冲区大小是%d", writeBufLen, readBufLen);
+			/*在这里可以输出一下对方连接信息用于测试*/
+		}
+
+		if (m_ifTimeOutKick == 1)
+		{
+			AddToTimerQueue(newConnect);
 		}
 
 	} while (0); //循环一次就跳出去

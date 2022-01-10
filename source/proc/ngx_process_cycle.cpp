@@ -66,6 +66,8 @@ void ngx_master_process_cycle()
     {
         sigsuspend(&set);
     }
+
+    
     return;
 }
 
@@ -110,12 +112,16 @@ static void ngx_worker_process_cycle(int inums,const char* procname)
     ngx_setproctitle(procname);
     ngx_log_core(NGX_LOG_INFO, 0, "%s %P [servant进程] 启动并且开始运行", procname, getpid());
 
+    //g_threadpool.StopAll();
     /*子进程循环*/
     for (;;)
     {
         ngx_process_events_and_timers();
         //sleep(1);
     }
+
+    g_threadpool.StopAll();
+    g_socket.Shutdown_subproc();
     return;
 }
 
@@ -129,10 +135,22 @@ static void ngx_worker_process_init()
         ngx_log_core(NGX_LOG_WARN, errno, "ngx_worker_process_init()中, sigprocmask()失败");
     }
 
+    /*初始化线程池*/
+    ngx_c_conf* p_config = ngx_c_conf::getInstance();
+    int tmpthreadnums = p_config->getInt("ProcMsgRecvWorkThreadCount", 5); //处理接收到的消息的线程池中线程数量
+    if (g_threadpool.Create(tmpthreadnums) == false)  //创建线程池中线程
+    {
+        //内存没释放，但是简单粗暴退出；
+        exit(-2);
+    }
+
+    if (g_socket.Initialize_subprocess() == false) //初始化子进程需要具备的一些多线程能力相关的信息
+    {
+        //内存没释放，但是简单粗暴退出；
+        exit(-2);
+    }
+
     g_socket.ngx_epoll_init();
 
-    /*线程池代码
-    *
-    *
-    */
+    
 }

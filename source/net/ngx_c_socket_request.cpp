@@ -89,7 +89,7 @@ void CSocket::ngx_read_request_handler(lpngx_connection_t pConn)
 			pConn->irecvlen = pConn->irecvlen - reco;
 		}
 	}
-	    
+
 	if (isflood == true)
 	{
 		zdClosesocketProc(pConn);
@@ -142,7 +142,7 @@ void CSocket::ngx_wait_request_handler_proc_p1(lpngx_connection_t pConn, bool& i
 		pTmpBuffer += m_iLenMsgHeader;
 		memcpy(pTmpBuffer, p_PkgHeader, m_iLenPkgHeader);
 
-		if (e_pkgLen == m_iLenMsgHeader)
+		if (e_pkgLen == m_iLenPkgHeader)
 		{
 			//该报文只有包头无包体【我们允许一个包只有包头，没有包体】
 			//这相当于收完整了，则直接入消息队列待后续业务逻辑线程去处理吧
@@ -171,7 +171,7 @@ void CSocket::ngx_wait_request_handler_proc_plast(lpngx_connection_t pConn, bool
 	if (isflood == false)
 	{
 		ngx_log_core(NGX_LOG_DEBUG, 0, "");
-		//g_threadpool.inMsgRecvQueueAndSignal(pConn->precvMemPointer); //入消息队列并触发线程处理消息
+		g_threadpool.inMsgRecvQueueAndSignan(pConn->precvMemPointer); //入消息队列并触发线程处理消息
 	}
 	else
 	{
@@ -335,7 +335,7 @@ ssize_t CSocket::sendproc(lpngx_connection_t c, char* buf, ssize_t size)
 
 //消息处理线程主函数，专门处理各种接收到的TCP消息， 
 //pMsgBuf：发送过来的消息缓冲区，消息本身是自解释的，通过包头可以计算整个包长
-//         消息本身格式【消息头+包头+包体】 
+//消息本身格式【消息头+包头+包体】
 void CSocket::threadRecvProcFunc(char* pMsgBuf)
 {
 	//这是一个虚函数，让子类去实现

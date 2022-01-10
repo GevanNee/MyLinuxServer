@@ -125,6 +125,11 @@ void ngx_log_stderr(int err, const char * fmt, ...)
 
 void ngx_log_core(int level, int err, const char* fmt, ...)
 {
+	if (level > ngx_log.log_level)
+	{
+		return;
+	}
+
 	va_list args;
 	
 	u_char errstr[NGX_MAX_ERROR_STR + 1];

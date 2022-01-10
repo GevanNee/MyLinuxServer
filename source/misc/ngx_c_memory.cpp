@@ -10,6 +10,7 @@ void* CMemory::AllocMemory(int memCount, bool isSetZero)
 	{
 		memset(tmpData, 0, memCount);
 	}
+
 	return tmpData;
 }
 
