@@ -123,6 +123,7 @@ lblMTQM:
 			goto lblMTQM;
 		}
 	}
+
 	if (m_cur_size_ > 0)
 	{
 		m_timer_value_ = GetEarliestTime();
@@ -152,6 +153,8 @@ void CSocket::clearAllFromTimerQueue()
 /*时间队列监视和处理线程，处理到期不发心跳包的用户踢出的线程*/
 void* CSocket::ServerTimerQueueMonitorThread(void* threadData)
 {
+	ngx_log_core(NGX_LOG_DEBUG, 0, "时间队列监听线程启动成功，线程id是%ud", (unsigned long)pthread_self());
+
 	ThreadItem* pThread = static_cast<ThreadItem*>(threadData);
 	CSocket* pSocketObj = pThread->_pThis;
 

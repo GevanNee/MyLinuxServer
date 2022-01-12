@@ -105,7 +105,7 @@ void CSocket::ngx_event_accept(lpngx_connection_t oldc)
 		{
 			AddToTimerQueue(newConnect);
 		}
-
+		++m_onlineUserCount;
 	} while (0); //循环一次就跳出去
 	
 	return;

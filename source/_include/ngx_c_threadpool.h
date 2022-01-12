@@ -21,7 +21,6 @@ public:
 
 private:
 	static void* ThreadFunc(void* threadData); //新线程的线程函数
-	//char* outMsgRecvQueue();
 	void clearMsgRecvQueue(); //清空接收消息的队列
 
 private:

@@ -39,13 +39,15 @@ CThreadPool				g_threadpool;
 int main(int argc, char* const * argv, char** env)
 {
 	int   exitcode = 0;
+	g_stopEvent = 0;
 
 	ngx_log.fd = -1;
 	ngx_pid = getpid();
 	ngx_parent = getppid();
 	ngx_process = NGX_PROCESS_MASTER;
 	ngx_reap = 0;
-
+	
+	
 	g_argvneedmem = 0;
 	for (int i = 0; i < argc; i++)
 	{

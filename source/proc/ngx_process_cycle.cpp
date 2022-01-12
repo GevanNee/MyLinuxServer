@@ -67,7 +67,6 @@ void ngx_master_process_cycle()
         sigsuspend(&set);
     }
 
-    
     return;
 }
 
@@ -151,6 +150,4 @@ static void ngx_worker_process_init()
     }
 
     g_socket.ngx_epoll_init();
-
-    
 }

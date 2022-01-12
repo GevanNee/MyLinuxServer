@@ -51,13 +51,14 @@ u_char* ngx_vslprintf(u_char* buf, u_char* last, const char* fmt, va_list args)
 		{
 			/*初始化临时变量*/
 			zero = (u_char)(*++fmt == '0' ? '0' : ' ');
+			
 			width = 0;
 			sign = 1;
 			hex = 0;
 			frac_width = 0;
 
 			/*一，解析%后面字符的含义*/
-			/*一.1) */
+			/*一.1)*/
 			while (*fmt >= '0' && *fmt <= '9')
 			{
 				width = width * 10 + (*fmt - '0');

@@ -1,7 +1,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
-
+#include <vector>
 #include "ngx_c_socket.h"
 #include "ngx_comm.h"
 #include "ngx_func.h"
@@ -86,7 +86,6 @@ lpngx_connection_t CSocket::ngx_get_connection(int isock)
 	++m_total_connection_n;
 	pConn->fd = isock;
 
-	
 	return pConn;
 }
 
@@ -133,6 +132,7 @@ void CSocket::clearconnection()
 
 void CSocket::ngx_free_connection(lpngx_connection_t pConn)
 {
+	ngx_log_core(NGX_LOG_DEBUG, 0, "ngx_free_connection()回收了一个连接");
 	//因为有线程可能要动连接池中连接，所以在合理互斥也是必要的
 	CLock lock(&m_connectionMutex);
 

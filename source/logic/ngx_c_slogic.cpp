@@ -51,6 +51,7 @@ bool CLogicSocket::Initialize()
 
 void CLogicSocket::SendNoBodyPkgToClient(LPSTRUC_MSG_HEADER pMsgHeader, unsigned short iMsgCode)
 {
+	ngx_log_core(NGX_LOG_DEBUG, 0, "CLogicSocket::SendNoBodyPkgToClient()准备发一个只有包体的");
 	CMemory* p_memory = CMemory::GetInstance();
 
 	char* p_sendbuf = (char*)p_memory->AllocMemory(m_iLenMsgHeader + m_iLenPkgHeader, false);
@@ -64,9 +65,10 @@ void CLogicSocket::SendNoBodyPkgToClient(LPSTRUC_MSG_HEADER pMsgHeader, unsigned
 	pPkgHeader->pkgLenth = htons(m_iLenPkgHeader);
 	pPkgHeader->crc32 = 0;
 
+
 	msgSend(p_sendbuf);
 
-	ngx_log_core(NGX_LOG_DEBUG, 0, "CLogicSocket::SendNoBodyPkgToClient()，构造了一个无包体的数据");
+	ngx_log_core(NGX_LOG_DEBUG, 0, "CLogicSocket::SendNoBodyPkgToClient()中，msgSend()返回了");
 
 	return;
 }
@@ -142,7 +144,22 @@ bool CLogicSocket::_HandleLogIn(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMs
 
 bool CLogicSocket::_HandlePing(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsgHeader, char* pPkgBody, unsigned short iBodyLength)
 {
-	return false;
+	ngx_log_core(NGX_LOG_DEBUG, 0, "CLogicSocket::_HandlePing()收到了一次心跳ping, iCurr = %d, pConn = %P", pMsgHeader->iCurrsequence, pMsgHeader->pConn);
+	
+	if (iBodyLength != 0)
+	{
+		ngx_log_core(NGX_LOG_WARN, 0, "CLogicSocket::_HandlePing(),iBodyLenth == %d", iBodyLength);
+		return false;
+	}//有包体则认为是 非法包
+
+	CLock lock(&pConn->logicPorcMutex); //凡是和本用户有关的访问都考虑用互斥，以免该用户同时发送过来两个命令达到各种作弊目的
+	pConn->lastPingTime = time(NULL);   //更新该变量
+
+	//服务器也发送 一个只有包头的数据包给客户端，作为返回的数据
+	SendNoBodyPkgToClient(pMsgHeader, _CMD_PING);
+
+	//ngx_log_stderr(0,"成功收到了心跳包并返回结果！");
+	return true;
 }
 
 void CLogicSocket::procPingTimeOutChecking(LPSTRUC_MSG_HEADER tmpmsg, time_t cur_time)
@@ -189,8 +206,10 @@ void CLogicSocket::threadRecvProcFunc(char* pMsgBuf)
 	{
 		if (pPkgHeader->crc32 != 0) //没有包体的包crc是0才对
 		{
+			ngx_log_core(NGX_LOG_WARN, 0, "CLogicSocket::threadRecvProcFunc()中，丢弃了一个包，原因是crc值不对");
 			return; //丢弃
 		}
+		ngx_log_core(NGX_LOG_DEBUG, 0, "CLogicSocket::threadRecvProcFunc()中，只有包头没有包体");
 
 		pPkgBody = nullptr;
 	}
@@ -200,6 +219,18 @@ void CLogicSocket::threadRecvProcFunc(char* pMsgBuf)
 		pPkgBody = (void*)(pMsgBuf + m_iLenPkgHeader + m_iLenMsgHeader);
 
 		int calccrc = CCRC32::GetInstance()->Get_CRC((unsigned char*)pPkgBody, pkglen - m_iLenMsgHeader);
+
+		if (calccrc != pPkgHeader->crc32) //服务器端根据包体计算crc值，和客户端传递过来的包头中的crc32信息比较
+		{
+			ngx_log_stderr(0, "CLogicSocket::threadRecvProcFunc()中CRC错误[服务器:%d/客户端:%d]，丢弃数据!", calccrc, pPkgHeader->crc32);    //正式代码中可以干掉这个信息
+			return; //crc错，直接丢弃
+		}
+		else
+		{
+			ngx_log_stderr(0,"CLogicSocket::threadRecvProcFunc()中CRC正确[服务器:%d/客户端:%d]，不错!",calccrc,pPkgHeader->crc32);
+		}
+
+		ngx_log_core(NGX_LOG_DEBUG, 0, "CLogicSocket::threadRecvProcFunc()中，Get_CRC() == %d", calccrc);
 	}
 
 	unsigned short imsgCode = ntohs(pPkgHeader->msgCode);
@@ -224,8 +255,10 @@ void CLogicSocket::threadRecvProcFunc(char* pMsgBuf)
 		return;  //没有相关的处理函数
 	}
 
+
+	ngx_log_core(NGX_LOG_DEBUG, 0, "CLogicSocket::threadRecvProcFunc()中，pkglen = %d", pkglen);
 	/*到这里算是正确的包*/
-	(this->*(statusHandler[pPkgHeader->msgCode]))(pMsgHeader->pConn, pMsgHeader, (char*)pPkgBody, pPkgHeader->pkgLenth - m_iLenMsgHeader);
+	(this->*(statusHandler[imsgCode]))(pMsgHeader->pConn, pMsgHeader, (char*)pPkgBody, pkglen - m_iLenPkgHeader);
 
 	return;
 }

@@ -162,6 +162,8 @@ void CThreadPool::Call()
 /*这是静态成员函数*/
 void* CThreadPool::ThreadFunc(void* threadData)
 {
+	ngx_log_core(NGX_LOG_DEBUG, 0, "CThreadPool::ThreadFunc()中%ul启动成功了", pthread_self());
+
 	ThreadItem* pThread = static_cast<ThreadItem*>(threadData);
 	CThreadPool* pThreadPoolObj = pThread->_pThis;
 
@@ -185,10 +187,9 @@ void* CThreadPool::ThreadFunc(void* threadData)
 			{
 				pThread->ifrunning = true;
 			}
-			ngx_log_core(NGX_LOG_DEBUG, 0, "ThreadFunc中线程启动成功, 线程id为:%ud",tid);
 			pthread_cond_wait(&m_pthreadCond, &m_pthreadMutex);
 		}
-
+		ngx_log_core(NGX_LOG_DEBUG, 0, "CThreadPool::ThreadFunc()中%d被唤醒了", pthread_self());
 		if (m_shutdown == true)
 		{
 			pthread_mutex_unlock(&m_pthreadMutex);
@@ -208,8 +209,11 @@ void* CThreadPool::ThreadFunc(void* threadData)
 
 		++pThreadPoolObj->m_iRunningThreadNum;
 
+		ngx_log_core(NGX_LOG_DEBUG, 0, "线程：%d开始处理消息", pthread_self());
+
 		/*真正处理消息的函数*/
 		g_socket.threadRecvProcFunc(jobBuf);
+		ngx_log_core(NGX_LOG_DEBUG, 0, "线程：%d消息处理结束了", pthread_self());
 
 		/*消息处理完了，*/
 		p_memory->FreeMemory(jobBuf);

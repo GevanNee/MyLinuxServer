@@ -159,21 +159,49 @@ void CSocket::Shutdown_subproc()
 
 }
 
+void CSocket::printTDInfo()
+{
+	//return;
+	time_t currtime = time(NULL);
+	if ((currtime - m_lastprintTime) > 10)
+	{
+		//超过10秒我们打印一次
+		int tmprmqc = g_threadpool.getRecvMsgQueueCount(); //收消息队列
+
+		m_lastprintTime = currtime;
+		int tmpoLUC = m_onlineUserCount;    //atomic做个中转，直接打印atomic类型报错；
+		int tmpsmqc = m_iSendMsgQueueCount; //atomic做个中转，直接打印atomic类型报错；
+		ngx_log_stderr(0, "------------------------------------begin--------------------------------------");
+		ngx_log_stderr(0, "当前在线人数/总人数(%d/%d)。", tmpoLUC, m_worker_connection);
+		ngx_log_stderr(0, "连接池中空闲连接/总连接/要释放的连接(%d/%d/%d)。", m_freeConnectionList.size(), m_connectionList.size(), m_recyconnectionList.size());
+		ngx_log_stderr(0, "当前时间队列大小(%d)。", m_timerQueuemap.size());
+		ngx_log_stderr(0, "当前收消息队列/发消息队列大小分别为(%d/%d)，丢弃的待发送数据包数量为%d。", tmprmqc, tmpsmqc, m_iDiscardSendPkgCount);
+		if (tmprmqc > 100000)
+		{
+			//接收队列过大，报一下，这个属于应该 引起警觉的，考虑限速等等手段
+			ngx_log_stderr(0, "接收队列条目数量过大(%d)，要考虑限速或者增加处理线程数量了！！！！！！", tmprmqc);
+		}
+		ngx_log_stderr(0, "-------------------------------------end---------------------------------------");
+	}
+	return;
+
+}
+
 void CSocket::ReadConf()
 {
 	ngx_c_conf* p_config = ngx_c_conf::getInstance();
-	m_worker_connection = p_config->getInt("worker_connections", m_worker_connection);              //epoll连接的最大项数
-	m_ListenPortCount = p_config->getInt("ListenPortCount", m_ListenPortCount);                    //取得要监听的端口数量
-	m_RecyConnectionWaitTime = p_config->getInt("Sock_RecyConnectionWaitTime", m_RecyConnectionWaitTime); //等待这么些秒后才回收连接
+	m_worker_connection = p_config->getInt("worker_connections", m_worker_connection);						//epoll连接的最大项数
+	m_ListenPortCount = p_config->getInt("ListenPortCount", m_ListenPortCount);								//取得要监听的端口数量
+	m_RecyConnectionWaitTime = p_config->getInt("Sock_RecyConnectionWaitTime", m_RecyConnectionWaitTime);	//等待这么些秒后才回收连接
 
-	m_ifkickTimeCount = p_config->getInt("Sock_WaitTimeEnable", 0);                                //是否开启踢人时钟，1：开启   0：不开启
-	m_iWaitTime = p_config->getInt("Sock_MaxWaitTime", m_iWaitTime);                         //多少秒检测一次是否 心跳超时，只有当Sock_WaitTimeEnable = 1时，本项才有用	
-	m_iWaitTime = (m_iWaitTime > 5) ? m_iWaitTime : 5;                                                 //不建议低于5秒钟，因为无需太频繁
-	m_ifTimeOutKick = p_config->getInt("Sock_TimeOutKick", 0);                                   //当时间到达Sock_MaxWaitTime指定的时间时，直接把客户端踢出去，只有当Sock_WaitTimeEnable = 1时，本项才有用 
+	m_ifkickTimeCount = p_config->getInt("Sock_WaitTimeEnable", 0);											//是否开启踢人时钟，1：开启   0：不开启
+	m_iWaitTime = p_config->getInt("Sock_MaxWaitTime", m_iWaitTime);										//多少秒检测一次是否 心跳超时，只有当Sock_WaitTimeEnable = 1时，本项才有用	
+	m_iWaitTime = (m_iWaitTime > 5) ? m_iWaitTime : 5;														//不建议低于5秒钟，因为无需太频繁
+	m_ifTimeOutKick = p_config->getInt("Sock_TimeOutKick", 0);												//当时间到达Sock_MaxWaitTime指定的时间时，直接把客户端踢出去，只有当Sock_WaitTimeEnable = 1时，本项才有用 
 
-	m_floodAkEnable = p_config->getInt("Sock_FloodAttackKickEnable", 0);                          //Flood攻击检测是否开启,1：开启   0：不开启
-	m_floodTimeInterval = p_config->getInt("Sock_FloodTimeInterval", 100);                            //表示每次收到数据包的时间间隔是100(毫秒)
-	m_floodKickCount = p_config->getInt("Sock_FloodKickCounter", 10);                              //累积多少次踢出此人
+	m_floodAkEnable = p_config->getInt("Sock_FloodAttackKickEnable", 0);									//Flood攻击检测是否开启,1：开启   0：不开启
+	m_floodTimeInterval = p_config->getInt("Sock_FloodTimeInterval", 100);									//表示每次收到数据包的时间间隔是100(毫秒)
+	m_floodKickCount = p_config->getInt("Sock_FloodKickCounter", 10);										//累积多少次踢出此人
 
 	return;
 }
@@ -208,6 +236,13 @@ bool CSocket::ngx_open_listening_sockets()
 			ngx_log_core(NGX_LOG_ERROR, errno, "CSocket::ngx_open_listening_sockets()中setsockopt()失败");
 			close(isocket);
 			return false;
+		}
+
+		int reuseport = 1;
+		if (setsockopt(isocket, SOL_SOCKET, SO_REUSEPORT, (const void*)&reuseport, sizeof(int)) == -1) //端口复用需要内核支持
+		{
+			//失败就失败吧，失败顶多是惊群，但程序依旧可以正常运行，所以仅仅提示一下即可
+			ngx_log_stderr(errno, "CSocekt::Initialize()中setsockopt(SO_REUSEPORT)失败", i);
 		}
 
 		/*reuseport*/
@@ -329,7 +364,7 @@ int CSocket::ngx_epoll_init()
 int CSocket::ngx_epoll_process_events(int timer)
 {	
 		int event_num = epoll_wait(m_epollhandle, m_events, NGX_MAX_EVENTS, timer);
-
+		
 		if (event_num == -1)
 		{
 			if (errno == EINTR)
@@ -441,7 +476,7 @@ int CSocket::ngx_epoll_oper_event(	int fd,
 		return 1; /**/
 	}
 
-	/*按理来说，EPOLL_ADD里有这行代码就行了，但是epoll_*/
+	/*按理来说，EPOLL_ADD里有这行代码就行了，但是epoll_ctl的modify是将新的epoll_event完全覆盖*/
 	ev.data.ptr = (void*)pConn;
 
 	if (epoll_ctl(m_epollhandle, eventtype, fd, &ev) == -1)
@@ -462,6 +497,7 @@ void CSocket::msgSend(char* psendbuf)
 	/*总的发送消息队列太大*/
 	if (m_iSendMsgQueueCount > 50000)
 	{
+		ngx_log_core(NGX_LOG_WARN, 0, "CSocket::msgSend()中发送消息队列太大了，准备丢弃包");
 		/*直接干掉要发送的数据，虽然对客户端不太友好，但是总比服务器崩溃强*/
 		m_iDiscardSendPkgCount++;
 		p_memory->FreeMemory(psendbuf);
@@ -474,6 +510,8 @@ void CSocket::msgSend(char* psendbuf)
 
 	if (p_Conn->iSendCount > 400)
 	{
+		ngx_log_core(NGX_LOG_WARN, 0, "CSocket::msgSend()中发现连接%d消息堆积，准备丢弃包并且关闭连接", p_Conn->fd);
+
 		m_iDiscardSendPkgCount++;
 
 		p_memory->FreeMemory(psendbuf);
@@ -486,10 +524,11 @@ void CSocket::msgSend(char* psendbuf)
 	m_MsgSendQueue.push_back(psendbuf);
 	++m_iSendMsgQueueCount; //++是原子操作
 
-	if (sem_post(&m_semEventSendQueue) == 1)
+	if (sem_post(&m_semEventSendQueue) == -1)
 	{
 		ngx_log_core(NGX_LOG_ERROR, errno, "CSocekt::msgSend()中sem_post(&m_semEventSendQueue)失败.");
 	}
+	ngx_log_core(NGX_LOG_DEBUG, 0, "CSocekt::msgSend()中sem_post了一个数据");
 
 	return;
 }
@@ -515,7 +554,7 @@ void CSocket::zdClosesocketProc(lpngx_connection_t p_Conn)
 		--p_Conn->iThrowSendCount;   //归0
 	}
 
-	ngx_log_core(NGX_LOG_DEBUG, errno, "zdClosesocketProc()关闭了一个连接");
+	ngx_log_core(NGX_LOG_DEBUG, errno, "zdClosesocketProc()，往回收队列里添加了一个节点");
 
 	inRecyConnectQueue(p_Conn);
 	return;
@@ -575,30 +614,44 @@ void* CSocket::ServerSendQueueThread(void* threadItem)
 	int err;
 	while (g_stopEvent == 0)
 	{
+		ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程循环了一次");
 		if (sem_wait(&pSocketObject->m_semEventSendQueue) == -1)
 		{
-			
+			ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程收到了信号量，准备开始发包了");
 			if (errno != EINTR)
 			{
 				ngx_log_stderr(errno, "CSocekt::ServerSendQueueThread()中sem_wait(&pSocketObj->m_semEventSendQueue)失败.");
 			}
 		}
+		ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程开始工作了");
 
 		if (g_stopEvent != 0)
 		{
+			ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程break了，因为g_stopEvent != 0");
 			break;
 		}
 
+		ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程开始工作后，m_iSendMsgQueueCount == %d", pSocketObject->m_iSendMsgQueueCount.load());
+		ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程开始工作后，m_MsgSendQueue.size == %d", pSocketObject->m_MsgSendQueue.size());
+
 		if (pSocketObject->m_iSendMsgQueueCount > 0)
 		{
+			ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程进入工作状态，准备获得锁");
+
 			err = pthread_mutex_lock(&pSocketObject->m_sendMessageQueueMutex); //因为我们要操作发送消息对列m_MsgSendQueue，所以这里要临界            
 			if (err != 0)
 			{
 				ngx_log_core(NGX_LOG_ERROR, err, "CThreadPool::ThreadFunc()中pthread_mutex_lock()失败，返回的错误码为%d!", err);
 			}
+
+			ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程拿到了锁，牛逼！");
 			
-			for (auto pos = pSocketObject->m_MsgSendQueue.begin(); pos != pSocketObject->m_MsgSendQueue.end(); /*循环内部控制pos++*/ );
+			ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程pos赋值成功！");
+
+			for (auto pos = pSocketObject->m_MsgSendQueue.begin(); pos != pSocketObject->m_MsgSendQueue.end(); /*循环内部控制pos++*/ )
 			{
+				ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程for循环开始！");
+
 				pMsgBuf = *pos;
 				pMsgHeader = (LPSTRUC_MSG_HEADER)pMsgBuf;
 				pPkgHeader = (LPCOMM_PKG_HEADER)(pMsgBuf + pSocketObject->m_iLenMsgHeader);
@@ -607,6 +660,8 @@ void* CSocket::ServerSendQueueThread(void* threadItem)
 				
 				if (p_Conn->iCurrSequence != pMsgHeader->iCurrsequence)
 				{
+					ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程检测到了一个过期的包");
+
 					/*说明这是一个过期的包，对面的连接已经断开了,此时连接已经被释放，那么这条数据就不用发送了*/
 					auto pos2 = pos;
 					pos++;
@@ -618,10 +673,12 @@ void* CSocket::ServerSendQueueThread(void* threadItem)
 
 				if (p_Conn->iThrowSendCount > 0)
 				{
+					ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程检测到发送缓冲区满了");
 					//靠系统驱动来发送消息，所以这里不能再发送
 					pos++;
 					continue;
 				}
+				ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程觉得这个包没毛病！");
 
 				/*往下走准备开始发消息*/
 				--p_Conn->iSendCount;
@@ -643,6 +700,7 @@ void* CSocket::ServerSendQueueThread(void* threadItem)
 				ngx_log_stderr(errno,"即将发送数据%ud。",p_Conn->isendlen);
 
 				ssize_t sendsize = pSocketObject->sendproc(p_Conn, p_Conn->psendbuf, p_Conn->isendlen);
+				ngx_log_core(NGX_LOG_DEBUG, 0, "发了一次包，长度是%l", (long)sendsize);
 
 				if (sendsize > 0)
 				{
@@ -669,17 +727,22 @@ void* CSocket::ServerSendQueueThread(void* threadItem)
 				}
 				else 
 				{
+					ngx_log_core(NGX_LOG_ERROR, errno, "CSocket::ServerSendQueueThread()中sendproc()返回%ul", (unsigned long)sendsize);
+
 					p_memory->FreeMemory(p_Conn->psendMemPointer);  //释放内存
 					p_Conn->psendMemPointer = nullptr;
 					p_Conn->iThrowSendCount = 0;  //这行其实可以没有，因此此时此刻这东西就是=0的  
 					continue;
 				}
 			} // end of for()
-		
-			err = pthread_mutex_lock(&pSocketObject->m_sendMessageQueueMutex);
+
+			ngx_log_core(NGX_LOG_DEBUG, 0, "发送消息线程准备解锁了");
+
+			err = pthread_mutex_unlock(&pSocketObject->m_sendMessageQueueMutex);
 		} // end of if(pSocketObject->m_iSendMsgQueueCount > 0)
 	} //end of while
 
+	ngx_log_core(NGX_LOG_INFO, 0, "发送消息线程退出了，g_stopevent的值是%d", g_stopEvent);
 	return nullptr;
 }
 

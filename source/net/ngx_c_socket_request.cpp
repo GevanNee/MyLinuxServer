@@ -170,11 +170,12 @@ void CSocket::ngx_wait_request_handler_proc_plast(lpngx_connection_t pConn, bool
 
 	if (isflood == false)
 	{
-		ngx_log_core(NGX_LOG_DEBUG, 0, "");
+		ngx_log_core(NGX_LOG_DEBUG, 0, "收到完整的包，并且没有检测到flood攻击");
 		g_threadpool.inMsgRecvQueueAndSignan(pConn->precvMemPointer); //入消息队列并触发线程处理消息
 	}
 	else
 	{
+		ngx_log_core(NGX_LOG_WARN, 0, "收到完整的包，并且检测到了flood攻击");
 		//对于有攻击倾向的恶人，先把他的包丢掉
 		CMemory* p_memory = CMemory::GetInstance();
 		p_memory->FreeMemory(pConn->precvMemPointer); //直接释放掉内存，根本不往消息队列入

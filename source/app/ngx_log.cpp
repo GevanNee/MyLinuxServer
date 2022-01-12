@@ -86,8 +86,7 @@ u_char* ngx_log_errno(u_char* buf, u_char* last, int err)
 	return buf;
 }
 
-/*把日志打印到stderr里，非常重要的信息才需要调用这个函数*/
-/* */
+/*把日志打印到stderr里，非常重要的信息才需要调用这个函数，并且不能开启守护进程*/
 void ngx_log_stderr(int err, const char * fmt, ...)
 {
 	va_list args;
