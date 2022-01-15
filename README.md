@@ -7,8 +7,6 @@
 
 > >linux/unix编程手册
 > >
-> >nginx源码
-> >
 > >博客：<https://www.subingwen.cn/> by-苏丙温
 
 - [Linux通用服务器框架](#linux通用服务器框架)
