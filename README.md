@@ -82,15 +82,15 @@
 
 #### 效果
 
-![日志输出演示.png]()
+![日志输出演示.png](https://github.com/GevanNee/MyLinuxServer/blob/master/ReadmeSource/%E6%97%A5%E5%BF%97%E8%BE%93%E5%87%BA%E6%BC%94%E7%A4%BA.png)
 
 - 自动生成时间，日志等级和输出日志的进程编号，后面的内容是自己解析的格式化输出，类似printf这种。
 - 两个函数，一个写文件，一个写屏幕(开启守护进程后失效)：
-    ![日志函数调用演示.png]()
+    ![日志函数调用演示.png](https://github.com/GevanNee/MyLinuxServer/blob/master/ReadmeSource/%E6%97%A5%E5%BF%97%E8%B0%83%E7%94%A8%E6%BC%94%E7%A4%BA.png)
 - 还可以这样，格式化输出：
-    ![格式化输出.png]()
+    ![格式化输出.png](https://github.com/GevanNee/MyLinuxServer/blob/master/ReadmeSource/%E6%97%A5%E5%BF%97%E6%A0%BC%E5%BC%8F%E5%8C%96%E8%BE%93%E5%87%BA.png)
 - 如果errno不为零，后面还会跟一个括号，打印出errno对应的字符串信息，比如：
- ![errno信息.png]()
+ ![errno信息.png](https://github.com/GevanNee/MyLinuxServer/blob/master/ReadmeSource/errno%E6%BC%94%E7%A4%BA.png)
 
 #### 实现方法
 
@@ -114,8 +114,8 @@
 
 - 启动进程的二进制文件名字和ps命令看到的名字一般是一样的
 - 但是我们可以修改这个名字
- ![二进制文件名字.png]()
- ![ps命令看到的名字.png]()
+ ![二进制文件名字.png](https://github.com/GevanNee/MyLinuxServer/blob/master/ReadmeSource/%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%96%87%E4%BB%B6.png)
+ ![ps命令看到的名字.png](https://github.com/GevanNee/MyLinuxServer/blob/master/ReadmeSource/ps%E5%91%BD%E4%BB%A4.png)
  可以看到ps命令出来的woker进程和master进程名字都不一样。说明被我修改过的。
 
 - 视频演示：
@@ -132,7 +132,7 @@
 - 主要函数 `sigpromask()`，`sigempty()` 等等，具体看signal.cpp，自定义需要处理的信号集。
 - 目前只处理了master进程收到的，SIGCHILD信号，其他信号待添加。
 - main函数中用SIGCHILD信号同时回收多个子进程：(具体代码看ngx_signal.cpp文件里的 `ngx_process_get_status()` 函数)
- ![回收子进程演示.png]()
+ ![回收子进程演示.png](https://github.com/GevanNee/MyLinuxServer/blob/master/ReadmeSource/%E5%9B%9E%E6%94%B6%E5%AD%90%E8%BF%9B%E7%A8%8B.png)
 
 ## 三，通信模块
 
